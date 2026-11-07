@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: Aesirs Quality of Life
+## Notes: Automatically sells junk and restocks hunter ammunition into dedicated ammo bags.
+## Author: Aesir
+## Version: 1.0.0
+## AllowLoadGameType: camelot
+## SavedVariables: AesirsQualityOfLifeDB
+
+Core.lua
+Main.lua
