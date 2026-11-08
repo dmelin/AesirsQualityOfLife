@@ -55,21 +55,28 @@ local function Requirements(id)
     return requirements, schematic.outputItemID
 end
 
-local function Choose(inventory)
+local function Choose(inventory, debug)
     local best
     for _, id in ipairs(T.GetAllRecipeIDs()) do
         local info = T.GetRecipeInfo(id)
         if info and info.learned and not info.disabled and info.craftable ~= false
             and info.canSkillUp and info.relativeDifficulty and info.relativeDifficulty < 3
-            and not info.supportsQualities and not info.isRecraft and not info.isDummyRecipe
+            and not info.isRecraft and not info.isDummyRecipe
             and not info.isEnchantingRecipe and not info.isSalvageRecipe and not info.isGatheringRecipe then
             local requirements, outputItemID = Requirements(id)
             local count = requirements and A.BagCraftCount(requirements, inventory) or 0
+            if debug then
+                debug(info.name .. ": " .. (not requirements and "unsupported required reagent choices"
+                    or ("bag crafts=" .. count)))
+            end
             if count > 0 then
                 local cooldown, _, charges = T.GetRecipeCooldown(id)
                 local available = not cooldown or cooldown <= 0 or (charges and charges > 0)
                 for _, requirement in ipairs(T.GetRecipeRequirements(id) or {}) do
-                    if not requirement.met then available = false end
+                    if not requirement.met then
+                        available = false
+                        if debug then debug(info.name .. ": needs " .. (requirement.name or "tool/station")) end
+                    end
                 end
                 if available then
                     local candidate = { id = id, info = info, requirements = requirements,
@@ -78,6 +85,16 @@ local function Choose(inventory)
                     if A.BetterSkillRecipe(candidate, best) then best = candidate end
                 end
             end
+        elseif debug and info and info.learned then
+            debug(info.name .. ": filtered; skillUp=" .. tostring(info.canSkillUp)
+                .. ", difficulty=" .. tostring(info.relativeDifficulty)
+                .. ", craftable=" .. tostring(info.craftable)
+                .. ", disabled=" .. tostring(info.disabled)
+                .. ", enchant=" .. tostring(info.isEnchantingRecipe)
+                .. ", salvage=" .. tostring(info.isSalvageRecipe)
+                .. ", gathering=" .. tostring(info.isGatheringRecipe)
+                .. ", dummy=" .. tostring(info.isDummyRecipe)
+                .. ", recraft=" .. tostring(info.isRecraft))
         end
     end
     return best
@@ -95,7 +112,7 @@ local function StartBatch()
     if UnitCastingInfo("player") or UnitChannelInfo("player") then return end
     local inventory = Inventory()
     local best = Choose(inventory)
-    if not best then Stop("No skill-up recipe can be crafted from your bags."); return end
+    if not best then Stop("No eligible recipe found. /aqolcraftdebug shows why."); return end
     page:SelectRecipe(best.info)
     local count = best.info.canCreateMultiple == false and 1 or best.count
     Status(best.info.name .. " (batch of " .. count .. ")")
@@ -209,3 +226,9 @@ frame:SetScript("OnUpdate", function(_, delta)
 end)
 
 Attach()
+
+SLASH_AESIRSQOLCRAFTDEBUG1 = "/aqolcraftdebug"
+SlashCmdList.AESIRSQOLCRAFTDEBUG = function()
+    if not LocalProfession() then print("Aesirs QoL: Open your own crafting profession first."); return end
+    Choose(Inventory(), function(text) print("Aesirs QoL: " .. text) end)
+end

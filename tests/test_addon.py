@@ -168,6 +168,7 @@ class ProfessionTests(unittest.TestCase):
             for id=1,5 do recipe(id, 0, 10, 1) end
             requirements[1]={{met=false}}; cooldowns[2]=20
             schematics[3].recipeType=3; recipes[4].supportsQualities=true
+            schematics[4].reagentSlotSchematics[1].reagents[2]={itemID=11}
             autoComplete=false; skillButton.OnClick(); assert(crafts[1]==5)
         ''')
 
@@ -240,6 +241,15 @@ class ProfessionTests(unittest.TestCase):
             local slots=schematics[1].reagentSlotSchematics
             slots[2]={reagentType=1, quantityRequired=2, dataSlotType=1, reagents={{itemID=10}}}
             skillButton.OnClick(); assert(#crafts==0)
+        ''')
+
+    def test_quality_capability_does_not_exclude_fixed_item_recipe(self):
+        self.check('''
+            bags[0][1]=item(10, 2); recipe(1, 0, 10, 1)
+            recipes[1].name="Light Armor Kit"
+            recipes[1].supportsQualities=true
+            skillButton.OnClick()
+            assert(#crafts==1 and crafts[1]==1 and batchQuantity==2)
         ''')
 
 
