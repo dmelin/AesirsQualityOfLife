@@ -2,7 +2,7 @@ local _, A = ...
 local T = C_TradeSkillUI
 local frame = CreateFrame("Frame")
 local button, label, page, run, pending
-local elapsed, nextCraft = 0, 0
+local elapsed = 0
 
 local function Status(text)
     if label then label:SetText(text) end
@@ -83,7 +83,9 @@ local function Choose(inventory)
     return best
 end
 
-local function CraftNext()
+-- Called only from the button's hardware click. Forever protects CraftRecipe;
+-- timers and completion events must never attempt to start another batch.
+local function StartBatch()
     if not LocalProfession() or ProfessionID() ~= run.profession then
         Stop("Stopped: profession changed or closed."); return
     end
@@ -95,12 +97,13 @@ local function CraftNext()
     local best = Choose(inventory)
     if not best then Stop("No skill-up recipe can be crafted from your bags."); return end
     page:SelectRecipe(best.info)
-    Status(best.info.name .. " (" .. best.count .. " craftable from bags)")
+    local count = best.info.canCreateMultiple == false and 1 or best.count
+    Status(best.info.name .. " (batch of " .. count .. ")")
     -- Set before invoking CraftRecipe: instant crafts can deliver events immediately.
     pending = { id = best.id, outputItemID = best.outputItemID,
-        before = inventory, requirements = best.requirements,
+        before = inventory, requirements = best.requirements, count = count,
         started = GetTime() }
-    local ok = pcall(T.CraftRecipe, best.id, 1)
+    local ok = pcall(T.CraftRecipe, best.id, count)
     if not ok then Stop("Crafting requires another click. Click Smart Skill Up to retry.") end
 end
 
@@ -117,20 +120,24 @@ local function Attach()
     label:SetJustifyH("LEFT")
     Status("Uses materials in your bags. Click to start.")
     button:SetScript("OnClick", function()
-        if run then Stop("Stopped. Any current item will finish."); return end
+        if run then
+            -- Native repeat cancellation also runs from a direct user click.
+            pcall(T.StopRecipeRepeat)
+            Stop("Stopped. Any current item will finish."); return
+        end
         if not LocalProfession() then Status("Open your own crafting profession first."); return end
         if UnitCastingInfo("player") or UnitChannelInfo("player") then
             Status("Wait for the current cast to finish."); return
         end
         run = { profession = ProfessionID() }
         button:SetText("Stop Skill Up")
-        CraftNext()
+        StartBatch()
     end)
     button:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText("Aesirs Smart Skill Up")
         GameTooltip:AddLine("Prefers orange, then yellow, then green recipes. Within a difficulty, prefers more skill points, then the most crafts from your bags.", 1, 1, 1, true)
-        GameTooltip:AddLine("Rechecks after each item. Click again to stop further crafts. Materials are consumed.", 1, 1, 1, true)
+        GameTooltip:AddLine("Starts a native batch of the best recipe. Click again after the batch to choose the next recipe, or during it to stop. Materials are consumed.", 1, 1, 1, true)
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -175,7 +182,7 @@ frame:SetScript("OnUpdate", function(_, delta)
     if pending then
         local inventory, consumed = Inventory(), true
         for id, quantity in pairs(pending.requirements) do
-            if (inventory[id] or 0) > (pending.before[id] or 0) - quantity then consumed = false end
+            if (inventory[id] or 0) > (pending.before[id] or 0) - quantity * pending.count then consumed = false end
         end
         local output = pending.outputItemID
         local receivedOutput = output and (inventory[output] or 0) > (pending.before[output] or 0)
@@ -187,16 +194,18 @@ frame:SetScript("OnUpdate", function(_, delta)
         if completed then
             pending.confirmedAt = pending.confirmedAt or GetTime()
             if GetTime() - pending.confirmedAt >= 0.6 then
-                pending = nil
-                nextCraft = GetTime() + 0.25
+                Stop("Batch finished. Click Smart Skill Up for the next recipe.")
             end
         else
             pending.confirmedAt = nil
         end
-        if pending and GetTime() - pending.started > 60 then
+        if pending and (UnitCastingInfo("player") or UnitChannelInfo("player")) then
+            pending.started = GetTime()
+        end
+        if pending and GetTime() - math.max(pending.started, pending.succeeded or 0) > 60 then
             Stop("Stopped: craft completion was not confirmed. Click to retry.")
         end
-    elseif GetTime() >= nextCraft then CraftNext() end
+    end
 end)
 
 Attach()

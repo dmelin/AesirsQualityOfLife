@@ -142,14 +142,16 @@ class ProfessionTests(unittest.TestCase):
             skillButton.OnClick(); assert(crafts[2]==2)
         ''')
 
-    def test_recalculates_and_exhausts_materials(self):
+    def test_next_recipe_requires_new_click(self):
         self.check('''
             bags[0][1]=item(10, 2); bags[0][2]=item(20, 1)
             recipe(1, 0, 10, 1); recipe(2, 0, 20, 1)
             skillButton.OnClick(); recipes[1].relativeDifficulty=1
             ptick(40)
-            assert(#crafts==3 and crafts[1]==1 and crafts[2]==2 and crafts[3]==1)
+            assert(#crafts==1 and batchQuantity==2 and crafts[1]==1)
             assert(skillButton.text=="Smart Skill Up")
+            skillButton.OnClick(); ptick(20)
+            assert(#crafts==2 and crafts[2]==2 and batchQuantity==1)
         ''')
 
     def test_bags_only_and_no_gray_or_unlearned_recipes(self):
@@ -200,7 +202,7 @@ class ProfessionTests(unittest.TestCase):
             bags[0][1]=item(10, 3); recipe(1, 0, 10, 1)
             receiveOutput=true; castSpellID=99999
             skillButton.OnClick(); ptick(50)
-            assert(#crafts==3 and skillButton.text=="Smart Skill Up")
+            assert(#crafts==1 and batchQuantity==3 and skillButton.text=="Smart Skill Up")
         ''')
 
     def test_continues_from_native_profession_result(self):
@@ -208,7 +210,7 @@ class ProfessionTests(unittest.TestCase):
             bags[0][1]=item(10, 3); recipe(1, 0, 10, 1)
             sendResult=true; suppressSuccess=true
             skillButton.OnClick(); ptick(50)
-            assert(#crafts==3)
+            assert(#crafts==1 and batchQuantity==3)
         ''')
 
     def test_result_waits_for_material_consumption_and_cast_end(self):
@@ -218,7 +220,8 @@ class ProfessionTests(unittest.TestCase):
             pevent("TRADE_SKILL_ITEM_CRAFTED_RESULT", {itemID=10001, quantity=1})
             ptick(10); assert(#crafts==1)
             casting="Recipe 1"; complete(1); ptick(10); assert(#crafts==1)
-            casting=nil; ptick(10); assert(#crafts==2)
+            casting=nil; complete(1); complete(1); ptick(10)
+            assert(#crafts==1 and skillButton.text=="Smart Skill Up")
         ''')
 
     def test_unrelated_result_or_consumption_does_not_repeat(self):

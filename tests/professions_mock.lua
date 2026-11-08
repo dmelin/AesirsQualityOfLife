@@ -4,7 +4,15 @@ function UnitCastingInfo() return casting end
 function UnitChannelInfo() return nil end
 local widget = {}
 function widget:RegisterEvent() end
-function widget:SetScript(name, fn) self[name] = fn end
+function widget:SetScript(name, fn)
+    if name == "OnClick" then
+        self[name] = function(...)
+            hardwareClick = true
+            fn(...)
+            hardwareClick = false
+        end
+    else self[name] = fn end
+end
 function widget:HookScript(name, fn) self[name] = fn end
 function widget:SetSize() end
 function widget:SetPoint() end
@@ -70,7 +78,15 @@ function complete(id)
     if not suppressSuccess then pevent("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", castSpellID or id) end
 end
 function T.CraftRecipe(id, quantity)
-    assert(quantity==1)
+    assert(hardwareClick, "CraftRecipe requires a hardware click")
+    requests = (requests or 0)+1
+    batchQuantity = quantity
     crafts[#crafts+1]=id
-    if autoComplete then complete(id) end
+    for i=1,quantity do
+        if autoComplete then complete(id) end
+    end
+end
+function T.StopRecipeRepeat()
+    assert(hardwareClick, "repeat cancellation must be user initiated")
+    cancelled = true
 end

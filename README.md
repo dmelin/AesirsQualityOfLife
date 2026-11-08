@@ -14,9 +14,9 @@ A small World of Warcraft: Forever addon that handles routine vendor chores.
 
 Both features are enabled by default. No libraries or other addons are required.
 
-## Smart Skill Up (1.1.0)
+## Smart Skill Up (1.2.0)
 
-Open Leatherworking or another crafting profession and click **Smart Skill Up**, attached below the profession window. It crafts one item, checks your current recipe difficulties and remaining bag materials, and chooses again. Click **Stop Skill Up** to stop further crafts; an item already being cast can finish.
+Open Leatherworking or another crafting profession and click **Smart Skill Up**, attached below the profession window. The click picks the best recipe and starts a native batch using your bag materials, similar to Create All. When the batch finishes, click again to reassess and start the next best recipe. Click **Stop Skill Up** during a batch to cancel native repeats; an item already being cast can finish.
 
 Recipes are ranked by:
 
@@ -28,11 +28,11 @@ For equal skill-up potential, a recipe you can craft **7 times** beats one you c
 
 Only learned, usable item recipes with ordinary, unambiguous item reagents are included. Unmet tool/station requirements and active cooldowns are excluded. Target-item enchants, salvage, recrafting, quality selection, and recipes requiring alternative/currency reagent allocations are excluded. Cooking and other ordinary item-crafting professions can use the same button.
 
-The cycle stops on profession changes, closing the window, combat, interrupted/failed crafts, crafting errors, or unconfirmed completion. It never retries an unconfirmed craft automatically. If Forever blocks a continuation because another hardware click is required, the cycle stops and asks for another click; it does not bypass client restrictions. Materials are consumed while the cycle runs.
+Forever's live client blocks attempts to start another craft from a timer or completion event. All craft starts now run directly from the button click using the native `CraftRecipe(recipeID, numCasts)` batch argument. The addon never starts another batch automatically. Recipe ranking is evaluated per click, so difficulty changes during a batch do not switch recipes; stop and click again to reassess. Materials are consumed while the batch runs.
 
-Version 1.1.1 also confirms completion through the native crafted-item result or an increase in the output item, together with reagent consumption and the end of the cast. It no longer depends solely on a spell-success event with an exact recipe spell ID. A short settling delay lets bag and recipe updates arrive before choosing the next craft.
+Batch monitoring ends on profession changes, closing the window, combat, interrupted/failed crafts, crafting errors, or unconfirmed completion. Completion is checked using crafted-item/cast events or output changes together with total batch reagent consumption. The addon never retries an unconfirmed batch automatically.
 
-Profession API names were checked against the captured Forever API list. Recipe and reagent fields were checked against [Forever's profession type documentation](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/TradeSkillUITypesDocumentation.lua), and the button attaches to the [Forever crafting page](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_Professions/Camelot/Blizzard_ProfessionsCrafting.lua). Live-client UI and automatic continuation still need a smoke test.
+Profession API names were checked against the captured Forever API list. Recipe and reagent fields were checked against [Forever's profession type documentation](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/TradeSkillUITypesDocumentation.lua), and the button attaches to the [Forever crafting page](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_Professions/Camelot/Blizzard_ProfessionsCrafting.lua). Recipe selection has been confirmed in-game; native batch crafting still needs a smoke test.
 
 ## Installation
 
