@@ -16,20 +16,6 @@ function A.BetterSkillRecipe(candidate, best)
     return candidate.id < best.id -- Stable ties avoid jumping around the recipe list.
 end
 
-function A.BetterPetFood(candidate, best)
-    if not best then return true end
-    for _, key in ipairs({ "benefit", "requiredLevel", "level", "quality", "price", "id", "bag", "slot" }) do
-        if candidate[key] ~= best[key] then return candidate[key] < best[key] end
-    end
-    return false
-end
-
-function A.FanOffset(index, count, radius, firstAngle, arc)
-    local angle = math.rad(count == 1 and firstAngle + arc / 2
-        or firstAngle + (index - 1) * arc / (count - 1))
-    return math.cos(angle) * radius, math.sin(angle) * radius
-end
-
 function A.BagCraftCount(requirements, inventory)
     local count = math.huge
     for id, quantity in pairs(requirements) do
