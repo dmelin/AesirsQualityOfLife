@@ -32,6 +32,8 @@ Recipes are ranked by:
 
 For equal skill-up potential, a recipe you can craft **7 times** beats one you can craft **5 times**. There are no Auction House prices, gold valuations, or bank-material counts. Difficulty categories are used rather than claiming exact skill-up probabilities.
 
+Crafting material counts use Forever's native carried-item count, including reagent/specialty bags, with bank, reagent-bank, and account-bank storage explicitly excluded. `/aqolcraftdebug` lists each recipe's carried reagent counts and required quantities.
+
 Only learned, usable item recipes with ordinary, unambiguous item reagents are included. Unmet tool/station requirements and active cooldowns are excluded. Target-item enchants, salvage, recrafting, and recipes requiring alternative/currency reagent allocations are excluded. A recipe's quality-capability flag alone does not exclude it; the actual required reagent choices determine whether it is supported. Cooking and other ordinary item-crafting professions can use the same button.
 
 Forever's live client blocks attempts to start another craft from a timer or completion event. All craft starts now run directly from the button click using the native `CraftRecipe(recipeID, numCasts)` batch argument. The addon never starts another batch automatically. Recipe ranking is evaluated per click, so difficulty changes during a batch do not switch recipes; stop and click again to reassess. Materials are consumed while the batch runs.

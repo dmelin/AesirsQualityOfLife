@@ -15,16 +15,13 @@ local function Stop(reason)
 end
 
 local function Inventory()
-    local counts = {}
-    for bag = 0, 4 do
-        for slot = 1, C_Container.GetContainerNumSlots(bag) do
-            local item = C_Container.GetContainerItemInfo(bag, slot)
-            if item and not item.isLocked then
-                counts[item.itemID] = (counts[item.itemID] or 0) + item.stackCount
-            end
-        end
-    end
-    return counts
+    -- Include every carried bag, including the reagent-bag slot, but no banks.
+    -- Cache queried items so this table remains a transaction snapshot.
+    return setmetatable({}, { __index = function(counts, itemID)
+        local count = C_Item.GetItemCount(itemID, false, false, false, false) or 0
+        rawset(counts, itemID, count)
+        return count
+    end })
 end
 
 local function ProfessionID()
@@ -68,6 +65,9 @@ local function Choose(inventory, debug)
             if debug then
                 debug(info.name .. ": " .. (not requirements and "unsupported required reagent choices"
                     or ("bag crafts=" .. count)))
+                for itemID, quantity in pairs(requirements or {}) do
+                    debug("  reagent " .. itemID .. ": carried=" .. inventory[itemID] .. ", needed=" .. quantity)
+                end
             end
             if count > 0 then
                 local cooldown, _, charges = T.GetRecipeCooldown(id)
@@ -120,6 +120,8 @@ local function StartBatch()
     pending = { id = best.id, outputItemID = best.outputItemID,
         before = inventory, requirements = best.requirements, count = count,
         started = GetTime() }
+    -- Snapshot output before the craft as well as the reagents queried by Choose.
+    pending.outputBefore = best.outputItemID and inventory[best.outputItemID] or 0
     local ok = pcall(T.CraftRecipe, best.id, count)
     if not ok then Stop("Crafting requires another click. Click Smart Skill Up to retry.") end
 end
@@ -202,7 +204,7 @@ frame:SetScript("OnUpdate", function(_, delta)
             if (inventory[id] or 0) > (pending.before[id] or 0) - quantity * pending.count then consumed = false end
         end
         local output = pending.outputItemID
-        local receivedOutput = output and (inventory[output] or 0) > (pending.before[output] or 0)
+        local receivedOutput = output and (inventory[output] or 0) > pending.outputBefore
         -- Some crafts report a cast spell different from the recipe ID. Confirm
         -- output AND reagent consumption as a fallback, instead of waiting forever
         -- for a UNIT_SPELLCAST_SUCCEEDED carrying that exact recipe ID.

@@ -163,6 +163,29 @@ class ProfessionTests(unittest.TestCase):
     def check(self, code):
         self.lua.execute(code)
 
+    def test_crafts_using_materials_in_additional_reagent_bag(self):
+        self.check('''
+            bags[5]={[1]=item(2318, 11)}
+            recipe(1, 0, 2318, 1); recipes[1].name="Light Armor Kit"
+            skillButton.OnClick(); ptick(20)
+            assert(#crafts==1 and crafts[1]==1 and batchQuantity==11)
+            assert(skillButton.text=="Smart Skill Up")
+        ''')
+
+    def test_counts_materials_split_between_regular_and_reagent_bags(self):
+        self.check('''
+            bags[0][1]=item(2318, 3); bags[5]={[1]=item(2318, 8)}
+            recipe(1, 0, 2318, 2)
+            skillButton.OnClick(); assert(batchQuantity==5)
+        ''')
+
+    def test_bank_slots_do_not_increase_crafting_count(self):
+        self.check('''
+            bags[6]={[1]=item(2318, 99)}
+            recipe(1, 0, 2318, 1)
+            skillButton.OnClick(); assert(#crafts==0)
+        ''')
+
     def test_seven_beats_five_at_equal_skill_gain(self):
         self.check('''
             bags[0][1]=item(10, 7); bags[0][2]=item(20, 5)

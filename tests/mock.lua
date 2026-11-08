@@ -47,6 +47,16 @@ function count(id)
     return n
 end
 C_Item = {}
+function C_Item.GetItemCount(id, includeBank, includeUses, includeReagentBank, includeAccountBank)
+    assert(not includeBank and not includeUses and not includeReagentBank and not includeAccountBank)
+    local n = 0
+    for bag = 0, 5 do
+        for _, v in pairs(bags[bag] or {}) do
+            if v.itemID == id then n = n + v.stackCount end
+        end
+    end
+    return n
+end
 function C_Item.GetItemInfoInstant(id)
     if id == "weapon" then return 1, nil, nil, nil, nil, 2, weaponSub end
     return id, nil, nil, nil, nil, 6, data[id].sub

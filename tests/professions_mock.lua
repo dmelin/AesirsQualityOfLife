@@ -60,7 +60,7 @@ function complete(id)
     for _, slot in ipairs(schematics[id].reagentSlotSchematics) do
         local need = slot.quantityRequired
         local reagent = slot.reagents[1].itemID
-        for bag=0,4 do for index, v in pairs(bags[bag]) do
+        for bag=0,5 do for index, v in pairs(bags[bag] or {}) do
             if v.itemID == reagent then
                 local take=math.min(need, v.stackCount)
                 need=need-take; v.stackCount=v.stackCount-take
