@@ -20,7 +20,12 @@ function methods:SetTexture(value) self.texture=value end
 function methods:SetTexCoord(...) self.coords={...} end
 function methods:SetDesaturated(value) self.gray=value end
 function methods:SetScript(key, fn) self.scripts[key]=fn end
-function methods:RegisterEvent(event) self.registered[event]=true end
+invalidEvents={LEARNED_SPELL_IN_TAB=true}
+C_EventUtils={IsEventValid=function(event) return not invalidEvents[event] end}
+function methods:RegisterEvent(event)
+    assert(C_EventUtils.IsEventValid(event), "unknown event: "..event)
+    self.registered[event]=true
+end
 function methods:SetAttribute(key,value) Guard(); self.attributes[key]=value end
 function methods:GetFrameRef(key) return self.refs[key] end
 function methods:SetFrameRef(key,value) Guard(); self.refs[key]=value end

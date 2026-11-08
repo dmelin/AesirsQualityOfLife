@@ -301,6 +301,16 @@ class HunterBarTests(unittest.TestCase):
     def check(self, code):
         self.lua.execute(code)
 
+    def test_unknown_optional_event_cannot_abort_toolbar_loading(self):
+        self.check('invalidEvents.SPELL_TEXT_UPDATE=true')
+        self.lua.execute((ROOT / 'HunterBar.lua').read_text(), 'AesirsQualityOfLife', self.lua.globals().A)
+        self.check('''
+            assert(not hunterEvents.registered.LEARNED_SPELL_IN_TAB)
+            assert(not hunterEvents.registered.SPELL_TEXT_UPDATE)
+            assert(hunterEvents.registered.SPELLS_CHANGED)
+            hevent("PLAYER_LOGIN"); assert(widgets.AesirsQoLHunterBar)
+        ''')
+
     def test_hunter_only_and_class_icon(self):
         self.check('''
             class="MAGE"; hevent("PLAYER_LOGIN"); assert(not widgets.AesirsQoLHunterBar)

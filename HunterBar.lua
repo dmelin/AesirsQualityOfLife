@@ -305,9 +305,13 @@ local function Create()
     Refresh()
 end
 
-for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "SPELLS_CHANGED", "LEARNED_SPELL_IN_TAB",
+for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "SPELLS_CHANGED",
     "BAG_UPDATE_DELAYED", "GET_ITEM_INFO_RECEIVED", "SPELL_TEXT_UPDATE", "UNIT_PET",
-    "MINIMAP_UPDATE_TRACKING", "PLAYER_REGEN_ENABLED", "EDIT_MODE_LAYOUTS_UPDATED" }) do events:RegisterEvent(event) end
+    "MINIMAP_UPDATE_TRACKING", "PLAYER_REGEN_ENABLED", "EDIT_MODE_LAYOUTS_UPDATED" }) do
+    -- Event availability differs from Retail. An optional unsupported event must
+    -- not abort loading before the login/update handlers are installed.
+    if C_EventUtils.IsEventValid(event) then events:RegisterEvent(event) end
+end
 events:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then Create() end
     if not hub then return end
