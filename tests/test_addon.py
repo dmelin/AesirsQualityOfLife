@@ -195,6 +195,40 @@ class ProfessionTests(unittest.TestCase):
             linked=true; skillButton.OnClick(); ptick(10); assert(#crafts==0)
         ''')
 
+    def test_continues_with_different_cast_spell_id(self):
+        self.check('''
+            bags[0][1]=item(10, 3); recipe(1, 0, 10, 1)
+            receiveOutput=true; castSpellID=99999
+            skillButton.OnClick(); ptick(50)
+            assert(#crafts==3 and skillButton.text=="Smart Skill Up")
+        ''')
+
+    def test_continues_from_native_profession_result(self):
+        self.check('''
+            bags[0][1]=item(10, 3); recipe(1, 0, 10, 1)
+            sendResult=true; suppressSuccess=true
+            skillButton.OnClick(); ptick(50)
+            assert(#crafts==3)
+        ''')
+
+    def test_result_waits_for_material_consumption_and_cast_end(self):
+        self.check('''
+            bags[0][1]=item(10, 3); recipe(1, 0, 10, 1)
+            autoComplete=false; skillButton.OnClick()
+            pevent("TRADE_SKILL_ITEM_CRAFTED_RESULT", {itemID=10001, quantity=1})
+            ptick(10); assert(#crafts==1)
+            casting="Recipe 1"; complete(1); ptick(10); assert(#crafts==1)
+            casting=nil; ptick(10); assert(#crafts==2)
+        ''')
+
+    def test_unrelated_result_or_consumption_does_not_repeat(self):
+        self.check('''
+            bags[0][1]=item(10, 3); recipe(1, 0, 10, 1)
+            autoComplete=false; suppressSuccess=true; skillButton.OnClick()
+            pevent("TRADE_SKILL_ITEM_CRAFTED_RESULT", {itemID=9999, quantity=1})
+            complete(1); ptick(20); assert(#crafts==1)
+        ''')
+
     def test_duplicate_reagents_counted_together_and_zero_cost_excluded(self):
         self.check('''
             assert(A.BagCraftCount({[10]=3}, {[10]=7})==2)

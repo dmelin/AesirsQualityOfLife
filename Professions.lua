@@ -52,7 +52,7 @@ local function Requirements(id)
             requirements[reagent.itemID] = (requirements[reagent.itemID] or 0) + slot.quantityRequired
         end
     end
-    return requirements
+    return requirements, schematic.outputItemID
 end
 
 local function Choose(inventory)
@@ -63,7 +63,7 @@ local function Choose(inventory)
             and info.canSkillUp and info.relativeDifficulty and info.relativeDifficulty < 3
             and not info.supportsQualities and not info.isRecraft and not info.isDummyRecipe
             and not info.isEnchantingRecipe and not info.isSalvageRecipe and not info.isGatheringRecipe then
-            local requirements = Requirements(id)
+            local requirements, outputItemID = Requirements(id)
             local count = requirements and A.BagCraftCount(requirements, inventory) or 0
             if count > 0 then
                 local cooldown, _, charges = T.GetRecipeCooldown(id)
@@ -73,7 +73,8 @@ local function Choose(inventory)
                 end
                 if available then
                     local candidate = { id = id, info = info, requirements = requirements,
-                        count = count, difficulty = info.relativeDifficulty, skillUps = info.numSkillUps or 1 }
+                        count = count, outputItemID = outputItemID,
+                        difficulty = info.relativeDifficulty, skillUps = info.numSkillUps or 1 }
                     if A.BetterSkillRecipe(candidate, best) then best = candidate end
                 end
             end
@@ -96,7 +97,8 @@ local function CraftNext()
     page:SelectRecipe(best.info)
     Status(best.info.name .. " (" .. best.count .. " craftable from bags)")
     -- Set before invoking CraftRecipe: instant crafts can deliver events immediately.
-    pending = { id = best.id, before = inventory, requirements = best.requirements,
+    pending = { id = best.id, outputItemID = best.outputItemID,
+        before = inventory, requirements = best.requirements,
         started = GetTime() }
     local ok = pcall(T.CraftRecipe, best.id, 1)
     if not ok then Stop("Crafting requires another click. Click Smart Skill Up to retry.") end
@@ -138,7 +140,8 @@ end
 for _, event in ipairs({ "ADDON_LOADED", "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE",
     "TRADE_SKILL_DATA_SOURCE_CHANGING", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_FAILED",
     "UNIT_SPELLCAST_INTERRUPTED", "UI_ERROR_MESSAGE", "PLAYER_REGEN_DISABLED",
-    "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }) do frame:RegisterEvent(event) end
+    "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN",
+    "TRADE_SKILL_ITEM_CRAFTED_RESULT" }) do frame:RegisterEvent(event) end
 
 frame:SetScript("OnEvent", function(_, event, unit, _, spellID)
     if event == "ADDON_LOADED" or event == "TRADE_SKILL_SHOW" then Attach() end
@@ -148,7 +151,11 @@ frame:SetScript("OnEvent", function(_, event, unit, _, spellID)
     elseif (event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN") and unit == "AesirsQualityOfLife" then
         Stop("Crafting requires another click. Click Smart Skill Up to continue.")
     elseif pending then
-        if event == "UI_ERROR_MESSAGE" then Stop("Stopped after a crafting error.")
+        if event == "TRADE_SKILL_ITEM_CRAFTED_RESULT" and type(unit) == "table"
+            and unit.itemID == pending.outputItemID and (unit.quantity or 0) > 0 then
+            -- Profession result events identify the output item, not the recipe spell.
+            pending.succeeded = GetTime()
+        elseif event == "UI_ERROR_MESSAGE" then Stop("Stopped after a crafting error.")
         elseif unit == "player" and spellID == pending.id then
             if event == "UNIT_SPELLCAST_SUCCEEDED" then
                 pending.succeeded = GetTime()
@@ -166,12 +173,25 @@ frame:SetScript("OnUpdate", function(_, delta)
     if not run then return end
     if not LocalProfession() or ProfessionID() ~= run.profession then Stop("Stopped: profession changed or closed."); return end
     if pending then
-        if pending.succeeded and GetTime() - pending.succeeded >= 0.6 then
-            local inventory, consumed = Inventory(), true
-            for id, quantity in pairs(pending.requirements) do
-                if (inventory[id] or 0) > (pending.before[id] or 0) - quantity then consumed = false end
+        local inventory, consumed = Inventory(), true
+        for id, quantity in pairs(pending.requirements) do
+            if (inventory[id] or 0) > (pending.before[id] or 0) - quantity then consumed = false end
+        end
+        local output = pending.outputItemID
+        local receivedOutput = output and (inventory[output] or 0) > (pending.before[output] or 0)
+        -- Some crafts report a cast spell different from the recipe ID. Confirm
+        -- output AND reagent consumption as a fallback, instead of waiting forever
+        -- for a UNIT_SPELLCAST_SUCCEEDED carrying that exact recipe ID.
+        local completed = consumed and (pending.succeeded or receivedOutput)
+            and not UnitCastingInfo("player") and not UnitChannelInfo("player")
+        if completed then
+            pending.confirmedAt = pending.confirmedAt or GetTime()
+            if GetTime() - pending.confirmedAt >= 0.6 then
+                pending = nil
+                nextCraft = GetTime() + 0.25
             end
-            if consumed then pending = nil; nextCraft = GetTime() + 0.25 end
+        else
+            pending.confirmedAt = nil
         end
         if pending and GetTime() - pending.started > 60 then
             Stop("Stopped: craft completion was not confirmed. Click to retry.")

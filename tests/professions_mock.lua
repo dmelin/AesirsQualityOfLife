@@ -39,7 +39,7 @@ function T.GetRecipeCooldown(id) return cooldowns[id] or 0 end
 function recipe(id, difficulty, reagent, quantity, points)
     recipes[id] = {recipeID=id, name="Recipe "..id, learned=true, craftable=true,
         canSkillUp=true, relativeDifficulty=difficulty, numSkillUps=points or 1}
-    schematics[id] = {recipeType=1, reagentSlotSchematics={{reagentType=1,
+    schematics[id] = {recipeType=1, outputItemID=10000+id, reagentSlotSchematics={{reagentType=1,
         quantityRequired=quantity, dataSlotType=1, reagents={{itemID=reagent}}}}}
 end
 function pevent(name, ...)
@@ -61,7 +61,13 @@ function complete(id)
         end end
         assert(need==0)
     end
-    pevent("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", id)
+    if receiveOutput then
+        local slot = 10 + id
+        local old = bags[0][slot]
+        bags[0][slot] = item(10000+id, (old and old.stackCount or 0)+1)
+    end
+    if sendResult then pevent("TRADE_SKILL_ITEM_CRAFTED_RESULT", {itemID=10000+id, quantity=1}) end
+    if not suppressSuccess then pevent("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", castSpellID or id) end
 end
 function T.CraftRecipe(id, quantity)
     assert(quantity==1)

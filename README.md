@@ -30,6 +30,8 @@ Only learned, usable item recipes with ordinary, unambiguous item reagents are i
 
 The cycle stops on profession changes, closing the window, combat, interrupted/failed crafts, crafting errors, or unconfirmed completion. It never retries an unconfirmed craft automatically. If Forever blocks a continuation because another hardware click is required, the cycle stops and asks for another click; it does not bypass client restrictions. Materials are consumed while the cycle runs.
 
+Version 1.1.1 also confirms completion through the native crafted-item result or an increase in the output item, together with reagent consumption and the end of the cast. It no longer depends solely on a spell-success event with an exact recipe spell ID. A short settling delay lets bag and recipe updates arrive before choosing the next craft.
+
 Profession API names were checked against the captured Forever API list. Recipe and reagent fields were checked against [Forever's profession type documentation](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/TradeSkillUITypesDocumentation.lua), and the button attaches to the [Forever crafting page](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_Professions/Camelot/Blizzard_ProfessionsCrafting.lua). Live-client UI and automatic continuation still need a smoke test.
 
 ## Installation
