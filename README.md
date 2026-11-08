@@ -20,6 +20,8 @@ Vendor actions print colored **Aesir QoL:** chat messages: trash-sale income in 
 
 The hunter class icon appears only on hunters, initially right of the screen center. Click it to open a radial fan containing **Tracking**, **Aspects**, **Mend Pet**, **Feed Pet**, **Call Pet**, **Revive Pet**, and **Tame Beast**. Unlearned pet actions are greyed out.
 
+Buttons use circular icon masks and gold borders. The central hunter button is 44 pixels, other buttons are 32 pixels, and the first fan has a compact 68-pixel radius. Submenu spacing scales with the number of learned spells.
+
 Tracking and Aspects open separate second-level fans containing learned spells. Opening one closes the other submenu while leaving the main fan visible. Clicking the hunter icon again closes both levels. Actions use secure click buttons; spell and food selections update outside combat, with deferred updates applied after combat.
 
 Feed Pet uses Forever's native `C_PetInfo.CanPetEatItem` check for the current pet, excludes locked and excessively old food, and selects from bag slots. It prefers raw ingredients with no player use effect, then plain recovery food, then food with recognized Well Fed/stat bonuses or unknown effects. Lower required/item level, quality, and vendor value break ties. This is a conservative benefit heuristic, not an exact calculation of every possible food effect. The chosen item is shown in the Feed Pet tooltip and is rechecked on click outside combat. Feeding requires a living pet and being out of combat, and consumes one item through the Feed Pet spell plus the selected bag slot.
@@ -50,7 +52,7 @@ Profession API names were checked against the captured Forever API list. Recipe 
 
 ## Installation
 
-Copy the `AesirsQualityOfLife` folder containing `AesirsQualityOfLife.toc`, `Core.lua`, `Main.lua`, `Professions.lua`, and `HunterBar.lua` into:
+Copy the entire `AesirsQualityOfLife` folder, including its Lua/TOC files and `Media` folder, into:
 
 ```text
 World of Warcraft/_forever_/Interface/AddOns/AesirsQualityOfLife/

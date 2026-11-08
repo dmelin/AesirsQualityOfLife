@@ -15,6 +15,8 @@ function methods:SetPoint(point, relative, relativePoint, x, y)
     end
 end
 function methods:CreateTexture() return setmetatable({}, {__index=methods}) end
+function methods:CreateMaskTexture() return setmetatable({}, {__index=methods}) end
+function methods:AddMaskTexture(mask) self.mask=mask end
 function methods:CreateFontString() return setmetatable({}, {__index=methods}) end
 function methods:SetTexture(value) self.texture=value end
 function methods:SetTexCoord(...) self.coords={...} end

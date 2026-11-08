@@ -3,7 +3,8 @@ local events = CreateFrame("Frame")
 local hub, primary, tracking, aspects, mover, feedButton
 local actions, trackButtons, aspectButtons = {}, {}, {}
 local dirty, editing, elapsed = true, false, 0
-local SIZE = 36
+local SIZE, HUB_SIZE, FAN_RADIUS = 32, 44, 68
+local ART = "Interface\\AddOns\\AesirsQualityOfLife\\Media\\"
 local ASPECT_IDS = { 13165, 13163, 5118, 13159, 13161, 20043, 34074, 61846 }
 local PET_SPELLS = {
     { key = "mend", id = 136, icon = "Interface\\Icons\\Ability_Hunter_MendPet" },
@@ -49,12 +50,16 @@ local function Button(name, parent, template, icon)
     local button = CreateFrame("Button", name, parent, template)
     button:SetSize(SIZE, SIZE)
     button:RegisterForClicks("AnyUp", "AnyDown")
-    button:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
-    button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    button:SetNormalTexture(ART .. "RoundBorder")
+    button:SetHighlightTexture(ART .. "RoundHighlight", "ADD")
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetPoint("TOPLEFT", 3, -3)
     button.icon:SetPoint("BOTTOMRIGHT", -3, 3)
     button.icon:SetTexture(icon)
+    button.mask = button:CreateMaskTexture()
+    button.mask:SetAllPoints(button.icon)
+    button.mask:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    button.icon:AddMaskTexture(button.mask)
     button:SetScript("OnEnter", Tooltip)
     button:SetScript("OnLeave", function() GameTooltip:Hide() end)
     return button
@@ -173,7 +178,7 @@ local function Refresh()
         button.icon:SetTexture(info.texture)
         button:SetAttribute("type", "spell")
         button:SetAttribute("spell", info.spellID)
-        local x, y = A.FanOffset(i, #known, math.max(76, #known * 15), 25, 130)
+        local x, y = A.FanOffset(i, #known, math.max(58, #known * 13), 25, 130)
         button:ClearAllPoints()
         button:SetPoint("CENTER", actions.tracking, "CENTER", x, y)
         button:Show()
@@ -197,7 +202,7 @@ local function Refresh()
         button.icon:SetTexture(info and info.iconID)
         button:SetAttribute("type", "spell")
         button:SetAttribute("spell", id)
-        local x, y = A.FanOffset(i, #aspectIDs, math.max(80, #aspectIDs * 22), -50, 100)
+        local x, y = A.FanOffset(i, #aspectIDs, math.max(62, #aspectIDs * 19), -50, 100)
         button:ClearAllPoints()
         button:SetPoint("CENTER", actions.aspects, "CENTER", x, y)
         button:Show()
@@ -220,6 +225,7 @@ local function Create()
     local _, class = UnitClass("player")
     if class ~= "HUNTER" then return end
     hub = Button("AesirsQoLHunterBar", UIParent, "SecureHandlerClickTemplate", "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
+    hub:SetSize(HUB_SIZE, HUB_SIZE)
     local coords = CLASS_ICON_TCOORDS.HUNTER
     hub.icon:SetTexCoord(unpack(coords))
     hub:SetMovable(true)
@@ -247,7 +253,7 @@ local function Create()
     ]])
     actions.tracking = Button("AesirsQoLTrackingMenu", primary, "SecureHandlerClickTemplate", "Interface\\Icons\\Ability_Tracking")
     actions.tracking.title = "Tracking"
-    actions.tracking:SetPoint("CENTER", hub, "CENTER", 0, 90)
+    actions.tracking:SetPoint("CENTER", hub, "CENTER", 0, FAN_RADIUS)
     actions.tracking:SetFrameRef("tracking", tracking)
     actions.tracking:SetFrameRef("aspects", aspects)
     actions.tracking:SetAttribute("_onclick", [[
@@ -258,7 +264,7 @@ local function Create()
     ]])
     actions.aspects = Button("AesirsQoLAspectMenu", primary, "SecureHandlerClickTemplate", "Interface\\Icons\\Spell_Nature_RavenForm")
     actions.aspects.title = "Aspects"
-    actions.aspects:SetPoint("CENTER", hub, "CENTER", A.FanOffset(1, 1, 90, 30, 0))
+    actions.aspects:SetPoint("CENTER", hub, "CENTER", A.FanOffset(1, 1, FAN_RADIUS, 30, 0))
     actions.aspects:SetFrameRef("tracking", tracking)
     actions.aspects:SetFrameRef("aspects", aspects)
     actions.aspects:SetAttribute("_onclick", [[
@@ -270,7 +276,7 @@ local function Create()
     for i, action in ipairs(PET_SPELLS) do
         local button = Button("AesirsQoLPet" .. action.key, primary, "SecureActionButtonTemplate", action.icon)
         button.title = C_Spell.GetSpellName(action.id) or action.key
-        local x, y = A.FanOffset(i, 5, 90, -20, -200)
+        local x, y = A.FanOffset(i, 5, FAN_RADIUS, -20, -200)
         button:SetPoint("CENTER", hub, "CENTER", x, y)
         actions[action.key] = button
     end
