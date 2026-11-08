@@ -14,6 +14,8 @@ A small World of Warcraft: Forever addon that handles routine vendor chores.
 
 Both features are enabled by default. No libraries or other addons are required.
 
+Vendor actions print colored **Aesir QoL:** chat messages: trash-sale income in green, ammo quantity and cost in gold, and totals formatted in gold/silver/copper. Totals use money changes from the vendor operation, with ammo counted only after receipt is confirmed. Restock summaries include successful partial purchases when a vendor closes or restocking stops; failed/unconfirmed purchases do not produce success messages.
+
 ## Smart Skill Up (1.2.0)
 
 Open Leatherworking or another crafting profession and click **Smart Skill Up**, attached below the profession window. The click picks the best recipe and starts a native batch using your bag materials, similar to Create All. When the batch finishes, click again to reassess and start the next best recipe. Click **Stop Skill Up** during a batch to cancel native repeats; an item already being cast can finish.

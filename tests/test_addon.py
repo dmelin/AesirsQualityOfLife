@@ -32,6 +32,45 @@ class AddonTests(unittest.TestCase):
             assert(A.PurchaseQuantity(450, 200, 1, 10, 1000, 15) == 15)
         ''')
 
+    def test_sale_and_ammo_logs_have_separate_actual_totals(self):
+        self.check('''
+            saleProfit=12345; sizes[1]=3; families[1]=1
+            event("MERCHANT_SHOW"); tick(50)
+            assert(#logs==2)
+            assert(logs[1]:find("Aesir ") and logs[1]:find("QoL:"))
+            assert(logs[1]:find("Sold trash") and logs[1]:find("1g")
+                and logs[1]:find("23s") and logs[1]:find("45c"))
+            assert(logs[2]:find("600 ammo") and logs[2]:find("30c"))
+            event("MERCHANT_CLOSED"); tick(10); assert(#logs==2)
+        ''')
+
+    def test_no_success_logs_for_no_sale_or_failed_purchase(self):
+        self.check('''
+            sizes[1]=2; families[1]=1; confirmPurchase=false
+            event("MERCHANT_SHOW"); tick(40)
+            for _, message in ipairs(logs) do
+                assert(not message:find("Sold trash") and not message:find("Total cost"))
+            end
+        ''')
+
+    def test_partial_restock_is_reported_on_close(self):
+        self.check('''
+            sizes[1]=3; families[1]=1
+            event("MERCHANT_SHOW")
+            for i=1,40 do tick(1); if calls==1 then break end end
+            event("MERCHANT_CLOSED"); tick(10)
+            assert(calls==1 and #logs==1)
+            assert(logs[1]:find("200 ammo") and logs[1]:find("10c"))
+        ''')
+
+    def test_delayed_sale_finishes_after_vendor_closes(self):
+        self.check('''
+            event("MERCHANT_SHOW"); tick(1)
+            event("MERCHANT_CLOSED"); money=money+57; tick(10)
+            assert(#logs==1 and logs[1]:find("Sold trash") and logs[1]:find("57c"))
+            assert(calls==0)
+        ''')
+
     def test_sells_only_at_accepting_vendor(self):
         self.check('''
             event("MERCHANT_SHOW"); tick(1)

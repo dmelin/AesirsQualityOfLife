@@ -58,7 +58,10 @@ end
 C_MerchantFrame = {}
 function C_MerchantFrame.GetItemInfo(i) return stock[i].info end
 function C_MerchantFrame.IsSellAllJunkEnabled() return sellEnabled end
-function C_MerchantFrame.SellAllJunkItems() sales = sales + 1 end
+function C_MerchantFrame.SellAllJunkItems()
+    sales = sales + 1
+    money = money + (saleProfit or 0)
+end
 C_Container = {}
 function C_Container.GetContainerNumSlots(bag) return sizes[bag] end
 function C_Container.GetContainerNumFreeSlots(bag)
@@ -104,4 +107,5 @@ function BuyMerchantItem(index, amount)
     money = money - entry.info.price * amount / entry.info.stackCount
     event("BAG_UPDATE_DELAYED")
 end
-function print() end
+logs = {}
+function print(message) logs[#logs + 1] = message end

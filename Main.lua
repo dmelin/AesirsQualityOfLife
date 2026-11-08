@@ -2,7 +2,61 @@ local _, A = ...
 local frame = CreateFrame("Frame")
 local session, elapsed = nil, 0
 local function Say(message)
-    print("|cff66ccffAesirs Quality of Life:|r " .. message)
+    print("|cff66ccffAesir |cffffcc66QoL:|r " .. message)
+end
+
+local function Coins(copper)
+    copper = math.max(0, math.floor(copper + 0.5))
+    local gold = math.floor(copper / 10000)
+    local silver = math.floor(copper / 100) % 100
+    local parts = {}
+    if gold > 0 then parts[#parts + 1] = "|cffffd700" .. gold .. "g|r" end
+    if silver > 0 then parts[#parts + 1] = "|cffc7c7cf" .. silver .. "s|r" end
+    if copper % 100 > 0 or #parts == 0 then parts[#parts + 1] = "|cffeda55f" .. (copper % 100) .. "c|r" end
+    return table.concat(parts, " ")
+end
+
+local function ReportAmmo(s)
+    if s.bought > 0 and not s.ammoReported then
+        s.ammoReported = true
+        Say("Bought |cffffcc66" .. s.bought .. " ammo|r. Total cost: " .. Coins(s.ammoCost) .. ".")
+    end
+end
+
+local function CollectTransactions(s)
+    if s.sale then
+        local sale = s.sale
+        local money = GetMoney()
+        if money ~= sale.lastMoney then
+            sale.lastMoney, sale.changed = money, GetTime()
+        end
+        -- Let the native sell-all operation settle before ammo spending begins.
+        if (money > sale.before and GetTime() - sale.changed >= 0.4)
+            or GetTime() - sale.started > 3 then
+            local profit = math.max(0, money - sale.before)
+            if profit > 0 then Say("|cff66dd88Sold trash|r. Total profit: " .. Coins(profit) .. ".") end
+            s.sale = nil
+        end
+    end
+    if s.pending then
+        local p = s.pending
+        local count = 0
+        for bag = 0, 4 do
+            for slot = 1, C_Container.GetContainerNumSlots(bag) do
+                local item = C_Container.GetContainerItemInfo(bag, slot)
+                if item and item.itemID == p.id then count = count + item.stackCount end
+            end
+        end
+        local paid = p.money - GetMoney()
+        if count >= p.before + p.amount and (paid > 0 or p.free) then
+            s.bought = s.bought + p.amount
+            s.ammoCost = s.ammoCost + math.max(0, paid)
+            s.pending = nil
+        elseif GetTime() - p.time > 5 then
+            s.done, s.pending = true, nil
+            Say("Ammo restock stopped: purchase was not confirmed.")
+        end
+    end
 end
 
 local function Ready()
@@ -99,21 +153,13 @@ local function Tick()
     if not s.sold then
         s.sold = true
         if AesirsQualityOfLifeDB.sellJunk and C_MerchantFrame.IsSellAllJunkEnabled() then
+            local money = GetMoney()
+            s.sale = { before = money, lastMoney = money, changed = GetTime(), started = GetTime() }
             C_MerchantFrame.SellAllJunkItems()
         end
         return
     end
-    if not AesirsQualityOfLifeDB.buyAmmo or s.done then return end
-    if s.pending then
-        if AmmoCount(s.pending.id) >= s.pending.before + s.pending.amount then
-            s.bought = s.bought + s.pending.amount
-            s.pending = nil
-        elseif GetTime() - s.pending.time > 5 then
-            s.done = true
-            Say("Ammo restock stopped: purchase was not confirmed.")
-        end
-        return
-    end
+    if s.sale or s.pending or not AesirsQualityOfLifeDB.buyAmmo or s.done then return end
     if s.moveTime then
         if not s.bagsChanged and GetTime() - s.moveTime < 2 then return end
         s.moveTime, s.bagsChanged = nil, nil
@@ -131,7 +177,6 @@ local function Tick()
     local room = Capacity(ammo.id, ammo.stack, family)
     if room <= 0 then
         s.done = true
-        if s.bought > 0 then Say("Restocked " .. s.bought .. " ammo.") end
         return
     end
     if MoveAmmo(ammo.id, ammo.stack, family) then
@@ -147,7 +192,8 @@ local function Tick()
         math.min(ammo.stack, GetMerchantItemMaxStack(ammo.index)),
         info.stackCount, info.price, GetMoney(), info.numAvailable)
     if amount == 0 then s.done = true; return end
-    s.pending = { id = ammo.id, before = AmmoCount(ammo.id), amount = amount, time = GetTime() }
+    s.pending = { id = ammo.id, before = AmmoCount(ammo.id), amount = amount, time = GetTime(),
+        money = GetMoney(), free = info.price == 0 }
     BuyMerchantItem(ammo.index, amount)
 end
 
@@ -162,10 +208,12 @@ frame:SetScript("OnEvent", function(_, event, name)
         if AesirsQualityOfLifeDB.sellJunk == nil then AesirsQualityOfLifeDB.sellJunk = true end
         if AesirsQualityOfLifeDB.buyAmmo == nil then AesirsQualityOfLifeDB.buyAmmo = true end
     elseif event == "MERCHANT_SHOW" then
-        session = { started = GetTime(), bought = 0, moves = 0 }
-    elseif event == "MERCHANT_CLOSED" then session = nil
+        if session then CollectTransactions(session); ReportAmmo(session) end
+        session = { started = GetTime(), bought = 0, ammoCost = 0, moves = 0 }
+    elseif event == "MERCHANT_CLOSED" and session then session.closed = true
     elseif event == "BAG_UPDATE_DELAYED" and session then session.bagsChanged = true
     elseif event == "UI_ERROR_MESSAGE" and session and session.pending then
+        CollectTransactions(session)
         session.done, session.pending = true, nil
         Say("Ammo restock stopped after a vendor error.")
     end
@@ -175,7 +223,13 @@ frame:SetScript("OnUpdate", function(_, delta)
     elapsed = elapsed + delta
     if elapsed < 0.35 then return end
     elapsed = 0
-    Tick()
+    CollectTransactions(session)
+    if session.closed then
+        if not session.sale and not session.pending then ReportAmmo(session); session = nil end
+    else
+        Tick()
+        if session.done then ReportAmmo(session) end
+    end
 end)
 
 SLASH_AESIRSQOL1 = "/aqol"
