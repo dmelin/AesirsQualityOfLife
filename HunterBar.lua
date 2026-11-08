@@ -3,7 +3,7 @@ local events = CreateFrame("Frame")
 local hub, primary, tracking, aspects, mover, feedButton
 local actions, trackButtons, aspectButtons = {}, {}, {}
 local dirty, editing, elapsed = true, false, 0
-local SIZE, HUB_SIZE, FAN_RADIUS = 32, 44, 68
+local SIZE, HUB_SIZE, FAN_RADIUS = 32, 44, 48
 local ART = "Interface\\AddOns\\AesirsQualityOfLife\\Media\\"
 local ASPECT_IDS = { 13165, 13163, 5118, 13159, 13161, 20043, 34074, 61846 }
 local PET_SPELLS = {
@@ -178,7 +178,7 @@ local function Refresh()
         button.icon:SetTexture(info.texture)
         button:SetAttribute("type", "spell")
         button:SetAttribute("spell", info.spellID)
-        local x, y = A.FanOffset(i, #known, math.max(58, #known * 13), 25, 130)
+        local x, y = A.FanOffset(i, #known, math.max(44, #known * 13), 25, 130)
         button:ClearAllPoints()
         button:SetPoint("CENTER", actions.tracking, "CENTER", x, y)
         button:Show()
@@ -202,7 +202,7 @@ local function Refresh()
         button.icon:SetTexture(info and info.iconID)
         button:SetAttribute("type", "spell")
         button:SetAttribute("spell", id)
-        local x, y = A.FanOffset(i, #aspectIDs, math.max(62, #aspectIDs * 19), -50, 100)
+        local x, y = A.FanOffset(i, #aspectIDs, math.max(52, #aspectIDs * 17.5), -50, 100)
         button:ClearAllPoints()
         button:SetPoint("CENTER", actions.aspects, "CENTER", x, y)
         button:Show()

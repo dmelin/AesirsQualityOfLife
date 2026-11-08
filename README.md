@@ -20,7 +20,7 @@ Vendor actions print colored **Aesir QoL:** chat messages: trash-sale income in 
 
 The hunter class icon appears only on hunters, initially right of the screen center. Click it to open a radial fan containing **Tracking**, **Aspects**, **Mend Pet**, **Feed Pet**, **Call Pet**, **Revive Pet**, and **Tame Beast**. Unlearned pet actions are greyed out.
 
-Buttons use circular icon masks and gold borders. The central hunter button is 44 pixels, other buttons are 32 pixels, and the first fan has a compact 68-pixel radius. Submenu spacing scales with the number of learned spells.
+Buttons use circular icon masks and gold borders. The central hunter button is 44 pixels, other buttons are 32 pixels, and the first fan has a compact 48-pixel radius. Submenu spacing scales with the number of learned spells.
 
 Tracking and Aspects open separate second-level fans containing learned spells. Opening one closes the other submenu while leaving the main fan visible. Clicking the hunter icon again closes both levels. Actions use secure click buttons; spell and food selections update outside combat, with deferred updates applied after combat.
 
