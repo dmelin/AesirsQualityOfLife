@@ -14,9 +14,27 @@ A small World of Warcraft: Forever addon that handles routine vendor chores.
 
 Both features are enabled by default. No libraries or other addons are required.
 
+## Smart Skill Up (1.1.0)
+
+Open Leatherworking or another crafting profession and click **Smart Skill Up**, attached below the profession window. It crafts one item, checks your current recipe difficulties and remaining bag materials, and chooses again. Click **Stop Skill Up** to stop further crafts; an item already being cast can finish.
+
+Recipes are ranked by:
+
+1. Skill-up difficulty: orange, then yellow, then green. Grey recipes are excluded.
+2. More skill points awarded per successful skill-up within the same difficulty.
+3. More crafts possible from materials currently in your backpack and equipped bags.
+
+For equal skill-up potential, a recipe you can craft **7 times** beats one you can craft **5 times**. There are no Auction House prices, gold valuations, or bank-material counts. Difficulty categories are used rather than claiming exact skill-up probabilities.
+
+Only learned, usable item recipes with ordinary, unambiguous item reagents are included. Unmet tool/station requirements and active cooldowns are excluded. Target-item enchants, salvage, recrafting, quality selection, and recipes requiring alternative/currency reagent allocations are excluded. Cooking and other ordinary item-crafting professions can use the same button.
+
+The cycle stops on profession changes, closing the window, combat, interrupted/failed crafts, crafting errors, or unconfirmed completion. It never retries an unconfirmed craft automatically. If Forever blocks a continuation because another hardware click is required, the cycle stops and asks for another click; it does not bypass client restrictions. Materials are consumed while the cycle runs.
+
+Profession API names were checked against the captured Forever API list. Recipe and reagent fields were checked against [Forever's profession type documentation](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/TradeSkillUITypesDocumentation.lua), and the button attaches to the [Forever crafting page](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_Professions/Camelot/Blizzard_ProfessionsCrafting.lua). Live-client UI and automatic continuation still need a smoke test.
+
 ## Installation
 
-Copy the `AesirsQualityOfLife` folder containing `AesirsQualityOfLife.toc`, `Core.lua`, and `Main.lua` into:
+Copy the `AesirsQualityOfLife` folder containing `AesirsQualityOfLife.toc`, `Core.lua`, `Main.lua`, and `Professions.lua` into:
 
 ```text
 World of Warcraft/_forever_/Interface/AddOns/AesirsQualityOfLife/

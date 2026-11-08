@@ -115,5 +115,96 @@ class AddonTests(unittest.TestCase):
         ''')
 
 
+class ProfessionTests(unittest.TestCase):
+    def setUp(self):
+        AddonTests.setUp(self)
+        self.lua.execute((ROOT / 'tests' / 'professions_mock.lua').read_text())
+        self.lua.execute((ROOT / 'Professions.lua').read_text(), 'AesirsQualityOfLife', self.lua.globals().A)
+
+    def check(self, code):
+        self.lua.execute(code)
+
+    def test_seven_beats_five_at_equal_skill_gain(self):
+        self.check('''
+            bags[0][1]=item(10, 7); bags[0][2]=item(20, 5)
+            recipe(1, 0, 10, 1); recipe(2, 0, 20, 1)
+            autoComplete=false; skillButton.OnClick()
+            assert(crafts[1]==1)
+        ''')
+
+    def test_difficulty_then_points_then_count(self):
+        self.check('''
+            bags[0][1]=item(10, 7); bags[0][2]=item(20, 2)
+            recipe(1, 1, 10, 1); recipe(2, 0, 20, 1)
+            autoComplete=false; skillButton.OnClick(); assert(crafts[1]==2)
+            skillButton.OnClick(); recipes[1].relativeDifficulty=0
+            recipes[2].numSkillUps=2
+            skillButton.OnClick(); assert(crafts[2]==2)
+        ''')
+
+    def test_recalculates_and_exhausts_materials(self):
+        self.check('''
+            bags[0][1]=item(10, 2); bags[0][2]=item(20, 1)
+            recipe(1, 0, 10, 1); recipe(2, 0, 20, 1)
+            skillButton.OnClick(); recipes[1].relativeDifficulty=1
+            ptick(40)
+            assert(#crafts==3 and crafts[1]==1 and crafts[2]==2 and crafts[3]==1)
+            assert(skillButton.text=="Smart Skill Up")
+        ''')
+
+    def test_bags_only_and_no_gray_or_unlearned_recipes(self):
+        self.check('''
+            bags[0][1]=item(10, 3)
+            recipe(1, 3, 10, 1); recipe(2, 0, 99, 1)
+            recipe(3, 0, 10, 1); recipes[3].learned=false
+            skillButton.OnClick(); ptick(10); assert(#crafts==0)
+        ''')
+
+    def test_requirements_cooldowns_and_special_recipes_excluded(self):
+        self.check('''
+            bags[0][1]=item(10, 8)
+            for id=1,5 do recipe(id, 0, 10, 1) end
+            requirements[1]={{met=false}}; cooldowns[2]=20
+            schematics[3].recipeType=3; recipes[4].supportsQualities=true
+            autoComplete=false; skillButton.OnClick(); assert(crafts[1]==5)
+        ''')
+
+    def test_stop_close_change_combat_and_interruption(self):
+        for action in ('skillButton.OnClick()', 'professionShown=false',
+                       'professionID=164', 'pevent("PLAYER_REGEN_DISABLED")',
+                       'pevent("UNIT_SPELLCAST_INTERRUPTED", "player", "cast", 1)'):
+            with self.subTest(action=action):
+                self.setUp()
+                self.check('''
+                    bags[0][1]=item(10, 8); recipe(1, 0, 10, 1)
+                    autoComplete=false; skillButton.OnClick()
+                ''' + action + '''
+                    complete(1); ptick(30); assert(#crafts==1)
+                ''')
+
+    def test_never_repeats_an_unconfirmed_craft(self):
+        self.check('''
+            bags[0][1]=item(10, 8); recipe(1, 0, 10, 1)
+            autoComplete=false; skillButton.OnClick(); ptick(250)
+            assert(#crafts==1 and skillButton.text=="Smart Skill Up")
+        ''')
+
+    def test_linked_profession_cannot_start(self):
+        self.check('''
+            bags[0][1]=item(10, 8); recipe(1, 0, 10, 1)
+            linked=true; skillButton.OnClick(); ptick(10); assert(#crafts==0)
+        ''')
+
+    def test_duplicate_reagents_counted_together_and_zero_cost_excluded(self):
+        self.check('''
+            assert(A.BagCraftCount({[10]=3}, {[10]=7})==2)
+            assert(A.BagCraftCount({}, {[10]=7})==0)
+            bags[0][1]=item(10, 3); recipe(1, 0, 10, 2)
+            local slots=schematics[1].reagentSlotSchematics
+            slots[2]={reagentType=1, quantityRequired=2, dataSlotType=1, reagents={{itemID=10}}}
+            skillButton.OnClick(); assert(#crafts==0)
+        ''')
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
