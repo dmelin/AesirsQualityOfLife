@@ -16,6 +16,18 @@ Both features are enabled by default. No libraries or other addons are required.
 
 Vendor actions print colored **Aesir QoL:** chat messages: trash-sale income in green, ammo quantity and cost in gold, and totals formatted in gold/silver/copper. Totals use money changes from the vendor operation, with ammo counted only after receipt is confirmed. Restock summaries include successful partial purchases when a vendor closes or restocking stops; failed/unconfirmed purchases do not produce success messages.
 
+## Hunter toolbar (1.4.0)
+
+The hunter class icon appears only on hunters, initially right of the screen center. Click it to open a radial fan containing **Tracking**, **Aspects**, **Mend Pet**, **Feed Pet**, **Call Pet**, **Revive Pet**, and **Tame Beast**. Unlearned pet actions are greyed out.
+
+Tracking and Aspects open separate second-level fans containing learned spells. Opening one closes the other submenu while leaving the main fan visible. Clicking the hunter icon again closes both levels. Actions use secure click buttons; spell and food selections update outside combat, with deferred updates applied after combat.
+
+Feed Pet uses Forever's native `C_PetInfo.CanPetEatItem` check for the current pet, excludes locked and excessively old food, and selects from bag slots. It prefers raw ingredients with no player use effect, then plain recovery food, then food with recognized Well Fed/stat bonuses or unknown effects. Lower required/item level, quality, and vendor value break ties. This is a conservative benefit heuristic, not an exact calculation of every possible food effect. The chosen item is shown in the Feed Pet tooltip and is rechecked on click outside combat. Feeding requires a living pet and being out of combat, and consumes one item through the Feed Pet spell plus the selected bag slot.
+
+Open Forever's **Edit Interface** mode to show the toolbar's green drag handle. Drag the hunter icon; its position saves on drop for the active layout. The position is stored by the addon, so dropping it saves immediately rather than participating in the native Save/Cancel or layout export. Tracking/aspect fans close while editing. No native Edit Mode system frames or settings are modified.
+
+API references: [Forever pet information](https://github.com/Atraeau/WoW-Addons/blob/main/docs/api/Pets-Mounts-Collections/C_PetInfo.md), [secure action templates](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua), [spellbook API](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SpellBookDocumentation.lua), and [Edit Mode callbacks](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_EditMode/Shared/EditModeManager.lua). The toolbar has simulated coverage; live spell casting, feeding, and layout positioning still need an in-game smoke test.
+
 ## Smart Skill Up (1.2.0)
 
 Open Leatherworking or another crafting profession and click **Smart Skill Up**, attached below the profession window. The click picks the best recipe and starts a native batch using your bag materials, similar to Create All. When the batch finishes, click again to reassess and start the next best recipe. Click **Stop Skill Up** during a batch to cancel native repeats; an item already being cast can finish.
@@ -38,7 +50,7 @@ Profession API names were checked against the captured Forever API list. Recipe 
 
 ## Installation
 
-Copy the `AesirsQualityOfLife` folder containing `AesirsQualityOfLife.toc`, `Core.lua`, `Main.lua`, and `Professions.lua` into:
+Copy the `AesirsQualityOfLife` folder containing `AesirsQualityOfLife.toc`, `Core.lua`, `Main.lua`, `Professions.lua`, and `HunterBar.lua` into:
 
 ```text
 World of Warcraft/_forever_/Interface/AddOns/AesirsQualityOfLife/

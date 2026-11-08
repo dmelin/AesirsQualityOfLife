@@ -2,10 +2,11 @@
 ## Title: Aesirs Quality of Life
 ## Notes: Sells junk, restocks hunter ammo, and picks skill-up crafts from bag materials.
 ## Author: Aesir
-## Version: 1.3.0
+## Version: 1.4.0
 ## AllowLoadGameType: camelot
 ## SavedVariables: AesirsQualityOfLifeDB
 
 Core.lua
 Main.lua
 Professions.lua
+HunterBar.lua
