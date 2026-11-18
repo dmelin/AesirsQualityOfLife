@@ -28,6 +28,14 @@ function tick(n)
 end
 function GetTime() return now end
 function GetMoney() return money end
+function CanMerchantRepair() return shown and repairVendor end
+function GetRepairAllCost() return repairCost or 0, repairCost ~= nil and repairCost > 0 end
+function RepairAllItems(guildBank)
+    assert(shown and repairVendor and not guildBank and money >= repairCost)
+    repairCalls = (repairCalls or 0) + 1
+    if delayRepair then return end
+    money, repairCost = money - repairCost, 0
+end
 function UnitLevel() return 15 end
 function UnitClass() return class, class end
 function InCombatLockdown() return combat end

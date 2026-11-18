@@ -231,6 +231,6 @@ Attach()
 
 SLASH_AESIRSQOLCRAFTDEBUG1 = "/aqolcraftdebug"
 SlashCmdList.AESIRSQOLCRAFTDEBUG = function()
-    if not LocalProfession() then print("Aesirs QoL: Open your own crafting profession first."); return end
-    Choose(Inventory(), function(text) print("Aesirs QoL: " .. text) end)
+    if not LocalProfession() then A.Print("Open your own crafting profession first."); return end
+    Choose(Inventory(), A.Print)
 end

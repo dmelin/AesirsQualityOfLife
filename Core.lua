@@ -1,5 +1,11 @@
 local _, A = ...
 
+A.ChatPrefix = "|cff66ccffAesir |cffffcc66QoL:|r "
+
+function A.Print(message)
+    print(A.ChatPrefix .. message)
+end
+
 -- Numeric item classes/subclasses and bag-family masks are locale independent.
 function A.AmmoType(weaponClass, weaponSubclass)
     if weaponClass ~= 2 then return end

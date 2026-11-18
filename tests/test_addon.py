@@ -12,13 +12,82 @@ class AddonTests(unittest.TestCase):
     def setUp(self):
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute((ROOT / 'tests' / 'mock.lua').read_text())
-        self.lua.execute('A = {}')
+        self.lua.execute('''
+            A = {}
+            COMBATLOG_XPGAIN_FIRSTPERSON = "%s dies, you gain %d experience."
+            COMBATLOG_XPGAIN_EXHAUSTION1_GROUP = "%s dies, you gain %d experience. (%s exp %s bonus, +%d group bonus)"
+            COMBATLOG_XPGAIN_FIRSTPERSON_RAID = "%2$d XP for %1$s|1a;b; (-%3$d)."
+        ''')
         for name in ('Core.lua', 'Main.lua'):
             self.lua.execute((ROOT / name).read_text(), 'AesirsQualityOfLife', self.lua.globals().A)
         self.lua.execute('event("ADDON_LOADED", "AesirsQualityOfLife")')
 
     def check(self, code):
         self.lua.execute(code)
+
+    def test_kill_xp_reports_remaining_kills_after_award(self):
+        self.check('''
+            local current, capped, queued = 700, false, {}
+            function UnitXP() return current end
+            function UnitXPMax() return 1000 end
+            GameRulesUtil = { IsPlayerAtEffectiveMaxLevel=function() return capped end }
+            C_Timer = { After=function(_, callback) queued[#queued+1]=callback end }
+
+            event("CHAT_MSG_COMBAT_XP_GAIN", "You gain 100 experience.")
+            event("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 0 experience.")
+            assert(#queued==0)
+            event("CHAT_MSG_COMBAT_XP_GAIN", "Forest Wolf dies, you gain 90 experience.")
+            assert(#logs==0)
+            current=790; queued[1]()
+            assert(logs[1]==A.ChatPrefix .. "Only 3 more of Forest Wolf to level!")
+
+            event("CHAT_MSG_COMBAT_XP_GAIN", "Boar dies, you gain 120 experience. (50 exp rested bonus, +10 group bonus)")
+            current=910; queued[2]()
+            assert(logs[2]==A.ChatPrefix .. "Only 1 more of Boar to level!")
+            event("CHAT_MSG_COMBAT_XP_GAIN", "25 XP for Gnollb (-5).")
+            current=935; queued[3]()
+            assert(logs[3]==A.ChatPrefix .. "Only 3 more of Gnoll to level!")
+
+            event("CHAT_MSG_COMBAT_XP_GAIN", "Wolf dies, you gain 100 experience.")
+            capped=true; current=0; queued[4]()
+            assert(#logs==3)
+        ''')
+
+    def test_repairs_after_selling_and_before_buying_ammo(self):
+        self.check('''
+            repairVendor=true; repairCost=10050; saleProfit=100
+            sizes[1]=3; families[1]=1
+            event("MERCHANT_SHOW"); tick(50)
+            assert(repairCalls==1 and repairCost==0 and bought==600)
+            assert(#logs==3 and logs[1]:find("Sold trash"))
+            assert(logs[2]:find("Repaired gear", 1, true) and logs[2]:find("1g", 1, true))
+            assert(logs[3]:find("Bought", 1, true) and money==20)
+        ''')
+
+    def test_repair_skips_unavailable_unaffordable_and_disabled_visits(self):
+        self.check('''
+            sellEnabled=false; repairCost=20000; repairVendor=true
+            event("MERCHANT_SHOW"); tick(10); assert(not repairCalls)
+            event("MERCHANT_CLOSED"); repairCost=20; repairVendor=false
+            event("MERCHANT_SHOW"); tick(10); assert(not repairCalls)
+            event("MERCHANT_CLOSED"); repairVendor=true
+            SlashCmdList.AESIRSQOL("repair")
+            event("MERCHANT_SHOW"); tick(10); assert(not repairCalls)
+            event("MERCHANT_CLOSED")
+            SlashCmdList.AESIRSQOL("repair")
+            event("MERCHANT_SHOW"); tick(10); assert(repairCalls==1 and repairCost==0)
+        ''')
+
+    def test_unconfirmed_repair_blocks_ammo_temporarily_without_retrying(self):
+        self.check('''
+            sellEnabled=false; delayRepair=true; repairCost=200; repairVendor=true
+            sizes[1]=1; families[1]=1
+            event("MERCHANT_SHOW"); tick(8)
+            assert(repairCalls==1 and bought==0 and #logs==0)
+            tick(20)
+            assert(repairCalls==1 and bought==200 and #logs==1)
+            assert(logs[1]:find("Bought", 1, true))
+        ''')
 
     def test_weapon_and_purchase_rules(self):
         self.check('''
@@ -37,7 +106,8 @@ class AddonTests(unittest.TestCase):
             saleProfit=12345; sizes[1]=3; families[1]=1
             event("MERCHANT_SHOW"); tick(50)
             assert(#logs==2)
-            assert(logs[1]:find("Aesir ") and logs[1]:find("QoL:"))
+            assert(A.ChatPrefix=="|cff66ccffAesir |cffffcc66QoL:|r ")
+            for _, message in ipairs(logs) do assert(message:sub(1, #A.ChatPrefix)==A.ChatPrefix) end
             assert(logs[1]:find("Sold trash") and logs[1]:find("1g")
                 and logs[1]:find("23s") and logs[1]:find("45c"))
             assert(logs[2]:find("600 ammo") and logs[2]:find("30c"))
@@ -162,6 +232,19 @@ class ProfessionTests(unittest.TestCase):
 
     def check(self, code):
         self.lua.execute(code)
+
+    def test_profession_debug_messages_use_the_shared_prefix(self):
+        self.check("""
+            linked=true
+            SlashCmdList.AESIRSQOLCRAFTDEBUG()
+            assert(logs[1]==A.ChatPrefix .. "Open your own crafting profession first.")
+            linked=false
+            pevent("TRADE_SKILL_SHOW")
+            recipe(1, 0, 2318, 1)
+            SlashCmdList.AESIRSQOLCRAFTDEBUG()
+            assert(#logs>1)
+            for _, message in ipairs(logs) do assert(message:sub(1, #A.ChatPrefix)==A.ChatPrefix) end
+        """)
 
     def test_crafts_using_materials_in_additional_reagent_bag(self):
         self.check('''

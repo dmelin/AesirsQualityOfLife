@@ -1,10 +1,11 @@
 # Aesirs Quality of Life
 
-A small World of Warcraft: Forever addon that handles routine vendor chores.
+A small World of Warcraft: Forever addon that handles vendor chores, leveling estimates, and other small conveniences.
 
 ## Features
 
 - Automatically sells poor-quality (grey) junk when a vendor opens, using Forever's native junk-selling API and its junk-selling rules.
+- Repairs damaged gear at vendors that offer repairs, using personal funds after junk sales settle and before buying ammunition.
 - On hunters, restocks arrows for bows/crossbows or bullets for guns.
 - Chooses the highest required-level, usable matching ammunition offered by the current vendor; item level breaks ties.
 - Counts only free slots and matching partial stacks in equipped quivers or ammo pouches. Ordinary bags never increase the purchase target. Other ammo types are not replaced.
@@ -12,13 +13,17 @@ A small World of Warcraft: Forever addon that handles routine vendor chores.
 - Buys in the vendor's bundle sizes, within your available money and stock. Space smaller than one vendor bundle is left empty.
 - Waits for each purchase to appear in your bags before another purchase. Stops on vendor errors, unconfirmed purchases, or closing the vendor. Pauses while in combat or holding something on the cursor.
 
-Both features are enabled by default. No libraries or other addons are required.
+The vendor features are enabled by default. No libraries or other addons are required.
 
-Vendor actions print colored **Aesir QoL:** chat messages: trash-sale income in green, ammo quantity and cost in gold, and totals formatted in gold/silver/copper. Totals use money changes from the vendor operation, with ammo counted only after receipt is confirmed. Restock summaries include successful partial purchases when a vendor closes or restocking stops; failed/unconfirmed purchases do not produce success messages.
+All addon chat messages start with the colored **Aesir QoL:** prefix. Vendor messages show trash-sale income in green, ammo quantity and cost in gold, and totals formatted in gold/silver/copper. Totals use money changes from the vendor operation, with ammo counted only after receipt is confirmed. Restock summaries include successful partial purchases when a vendor closes or restocking stops; failed/unconfirmed purchases do not produce success messages.
+
+## Kills to level
+
+After an XP-awarding kill, chat shows how many more kills of that creature would reach your next level at the same XP per kill. This estimate includes bonuses or penalties from that kill and stops at max level.
 
 ## Class widgets
 
-The hunter radial toolbar has moved to the standalone [Aesirs Class Widgets](https://github.com/dmelin/AesirsClassWidgets) addon. Install and enable that addon for the hunter toolbar; Quality of Life now handles vendor chores and profession crafting only. Old hunter positions remain available for one-time migration.
+The hunter radial toolbar has moved to the standalone [Aesirs Class Widgets](https://github.com/dmelin/AesirsClassWidgets) addon. Install and enable that addon for the hunter toolbar. Old hunter positions remain available for one-time migration.
 
 ## Smart Skill Up (1.2.0)
 
@@ -59,6 +64,7 @@ Restart WoW if the addon was installed while the client was open. Enable **Aesir
 | `/aqol` | Show feature status |
 | `/aqol trash` | Toggle automatic junk selling |
 | `/aqol ammo` | Toggle automatic hunter ammo restocking |
+| `/aqol repair` | Toggle automatic repairs |
 | `/aqolcraftdebug` | Print recipe eligibility and bag craft counts for the open profession |
 
 Settings are saved account-wide. Ammo restocking requires a matching dedicated ammo bag and a vendor selling usable ammunition. Purchases spend your character's money; extended-cost purchases are excluded. The addon does not change which ammo is equipped.

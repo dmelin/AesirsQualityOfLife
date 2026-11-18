@@ -1,9 +1,6 @@
 local _, A = ...
 local frame = CreateFrame("Frame")
 local session, elapsed = nil, 0
-local function Say(message)
-    print("|cff66ccffAesir |cffffcc66QoL:|r " .. message)
-end
 
 local function Coins(copper)
     copper = math.max(0, math.floor(copper + 0.5))
@@ -19,7 +16,7 @@ end
 local function ReportAmmo(s)
     if s.bought > 0 and not s.ammoReported then
         s.ammoReported = true
-        Say("Bought |cffffcc66" .. s.bought .. " ammo|r. Total cost: " .. Coins(s.ammoCost) .. ".")
+        A.Print("Bought |cffffcc66" .. s.bought .. " ammo|r. Total cost: " .. Coins(s.ammoCost) .. ".")
     end
 end
 
@@ -34,8 +31,18 @@ local function CollectTransactions(s)
         if (money > sale.before and GetTime() - sale.changed >= 0.4)
             or GetTime() - sale.started > 3 then
             local profit = math.max(0, money - sale.before)
-            if profit > 0 then Say("|cff66dd88Sold trash|r. Total profit: " .. Coins(profit) .. ".") end
+            if profit > 0 then A.Print("|cff66dd88Sold trash|r. Total profit: " .. Coins(profit) .. ".") end
             s.sale = nil
+        end
+    end
+    if s.repair then
+        local repair = s.repair
+        local paid = repair.money - GetMoney()
+        if paid == repair.cost and (s.closed or GetRepairAllCost() == 0) then
+            A.Print("Repaired gear. Total cost: " .. Coins(paid) .. ".")
+            s.repair = nil
+        elseif GetTime() - repair.started > 5 then
+            s.repair = nil
         end
     end
     if s.pending then
@@ -54,7 +61,7 @@ local function CollectTransactions(s)
             s.pending = nil
         elseif GetTime() - p.time > 5 then
             s.done, s.pending = true, nil
-            Say("Ammo restock stopped: purchase was not confirmed.")
+            A.Print("Ammo restock stopped: purchase was not confirmed.")
         end
     end
 end
@@ -159,7 +166,21 @@ local function Tick()
         end
         return
     end
-    if s.sale or s.pending or not AesirsQualityOfLifeDB.buyAmmo or s.done then return end
+    if s.sale or s.repair or s.pending then return end
+    if not s.repairChecked then
+        s.repairChecked = true
+        if AesirsQualityOfLifeDB.autoRepair and CanMerchantRepair() then
+            local cost, canRepair = GetRepairAllCost()
+            local money = GetMoney()
+            if canRepair and cost > 0 and cost <= money then
+                -- Wait for the repair to settle before buying ammunition.
+                s.repair = { money = money, cost = cost, started = GetTime() }
+                RepairAllItems()
+                return
+            end
+        end
+    end
+    if not AesirsQualityOfLifeDB.buyAmmo or s.done then return end
     if s.moveTime then
         if not s.bagsChanged and GetTime() - s.moveTime < 2 then return end
         s.moveTime, s.bagsChanged = nil, nil
@@ -197,16 +218,108 @@ local function Tick()
     BuyMerchantItem(ammo.index, amount)
 end
 
+local function FollowWhisper(message, sender)
+    if issecretvalue and (issecretvalue(message) or issecretvalue(sender)) then return end
+    if type(message) ~= "string" or type(sender) ~= "string" or sender == "" then return end
+    if not message:lower():match("^%s*follow%s+me%s*$") then return end
+
+    -- Let the client resolve the exact sender and enforce follow range.
+    FollowUnit(sender, true)
+end
+
+local function EscapeXPFormat(text)
+    return (text:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1"))
+end
+
+local function KillXPPattern(template)
+    local parts, position, argument = { "^" }, 1, 0
+    local nameIndex, xpIndex, captures = nil, nil, 0
+    while true do
+        local first, last, index, kind = template:find("%%(%d*%$?)([sd%%])", position)
+        if not first then break end
+        parts[#parts + 1] = EscapeXPFormat(template:sub(position, first - 1))
+        position = last + 1
+        if kind == "%" then
+            parts[#parts + 1] = "%%"
+        else
+            argument = argument + 1
+            local field = tonumber(index:match("^%d+")) or argument
+            if field == 1 and kind == "s" then
+                captures = captures + 1
+                nameIndex = captures
+                parts[#parts + 1] = "(.+)"
+            elseif field == 2 and kind == "d" then
+                captures = captures + 1
+                xpIndex = captures
+                parts[#parts + 1] = "(%d+)"
+            else
+                parts[#parts + 1] = kind == "d" and "%d+" or ".-"
+            end
+        end
+    end
+    if not nameIndex or not xpIndex then return end
+    parts[#parts + 1] = EscapeXPFormat(template:sub(position)) .. "$"
+    return { pattern = table.concat(parts), name = nameIndex, xp = xpIndex }
+end
+
+local killXPPatterns = {}
+local function AddKillXPPattern(template)
+    -- Some locales put a grammar choice after the creature name.
+    local first, last, a, b = template:find("|1([^;]*);([^;]*);")
+    if first then
+        local prefix, suffix = template:sub(1, first - 1), template:sub(last + 1)
+        AddKillXPPattern(prefix .. a .. suffix)
+        AddKillXPPattern(prefix .. b .. suffix)
+        return
+    end
+    local pattern = KillXPPattern(template)
+    if pattern then killXPPatterns[#killXPPatterns + 1] = pattern end
+end
+
+for _, category in ipairs({ "FIRSTPERSON", "EXHAUSTION1", "EXHAUSTION2", "EXHAUSTION4", "EXHAUSTION5" }) do
+    for _, variant in ipairs({ "", "_GROUP", "_RAID" }) do
+        local template = _G["COMBATLOG_XPGAIN_" .. category .. variant]
+        if template then AddKillXPPattern(template) end
+    end
+end
+
+local function ReportKillsToLevel(message)
+    if issecretvalue and issecretvalue(message) then return end
+    if type(message) ~= "string" then return end
+    for _, format in ipairs(killXPPatterns) do
+        local values = { message:match(format.pattern) }
+        local mob, xp = values[format.name], tonumber(values[format.xp])
+        if mob and xp and xp > 0 then
+            -- Read the remaining XP after the client applies this award.
+            C_Timer.After(0, function()
+                if GameRulesUtil.IsPlayerAtEffectiveMaxLevel() then return end
+                local remaining = UnitXPMax("player") - UnitXP("player")
+                if remaining > 0 then
+                    A.Print(("Only %d more of %s to level!"):format(math.ceil(remaining / xp), mob))
+                end
+            end)
+            return
+        end
+    end
+end
+
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("MERCHANT_SHOW")
 frame:RegisterEvent("MERCHANT_CLOSED")
 frame:RegisterEvent("BAG_UPDATE_DELAYED")
 frame:RegisterEvent("UI_ERROR_MESSAGE")
-frame:SetScript("OnEvent", function(_, event, name)
+frame:RegisterEvent("CHAT_MSG_WHISPER")
+frame:RegisterEvent("CHAT_MSG_COMBAT_XP_GAIN")
+frame:SetScript("OnEvent", function(_, event, name, sender)
     if event == "ADDON_LOADED" and name == "AesirsQualityOfLife" then
         AesirsQualityOfLifeDB = AesirsQualityOfLifeDB or {}
         if AesirsQualityOfLifeDB.sellJunk == nil then AesirsQualityOfLifeDB.sellJunk = true end
         if AesirsQualityOfLifeDB.buyAmmo == nil then AesirsQualityOfLifeDB.buyAmmo = true end
+        if AesirsQualityOfLifeDB.autoRepair == nil then AesirsQualityOfLifeDB.autoRepair = true end
+    elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
+        ReportKillsToLevel(name)
+    elseif event == "CHAT_MSG_WHISPER" then
+        FollowWhisper(name, sender)
     elseif event == "MERCHANT_SHOW" then
         if session then CollectTransactions(session); ReportAmmo(session) end
         session = { started = GetTime(), bought = 0, ammoCost = 0, moves = 0 }
@@ -215,7 +328,7 @@ frame:SetScript("OnEvent", function(_, event, name)
     elseif event == "UI_ERROR_MESSAGE" and session and session.pending then
         CollectTransactions(session)
         session.done, session.pending = true, nil
-        Say("Ammo restock stopped after a vendor error.")
+        A.Print("Ammo restock stopped after a vendor error.")
     end
 end)
 frame:SetScript("OnUpdate", function(_, delta)
@@ -225,7 +338,7 @@ frame:SetScript("OnUpdate", function(_, delta)
     elapsed = 0
     CollectTransactions(session)
     if session.closed then
-        if not session.sale and not session.pending then ReportAmmo(session); session = nil end
+        if not session.sale and not session.repair and not session.pending then ReportAmmo(session); session = nil end
     else
         Tick()
         if session.done then ReportAmmo(session) end
@@ -236,8 +349,10 @@ SLASH_AESIRSQOL1 = "/aqol"
 SlashCmdList.AESIRSQOL = function(message)
     local command = message:lower():match("^%s*(.-)%s*$")
     if command == "trash" then AesirsQualityOfLifeDB.sellJunk = not AesirsQualityOfLifeDB.sellJunk
-    elseif command == "ammo" then AesirsQualityOfLifeDB.buyAmmo = not AesirsQualityOfLifeDB.buyAmmo end
-    Say("Sell trash: " .. (AesirsQualityOfLifeDB.sellJunk and "on" or "off")
+    elseif command == "ammo" then AesirsQualityOfLifeDB.buyAmmo = not AesirsQualityOfLifeDB.buyAmmo
+    elseif command == "repair" then AesirsQualityOfLifeDB.autoRepair = not AesirsQualityOfLifeDB.autoRepair end
+    A.Print("Sell trash: " .. (AesirsQualityOfLifeDB.sellJunk and "on" or "off")
         .. "; buy ammo: " .. (AesirsQualityOfLifeDB.buyAmmo and "on" or "off")
-        .. ". /aqol trash or /aqol ammo to toggle.")
+        .. "; auto-repair: " .. (AesirsQualityOfLifeDB.autoRepair and "on" or "off")
+        .. ". /aqol trash, /aqol ammo, or /aqol repair to toggle.")
 end
